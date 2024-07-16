@@ -1,0 +1,39 @@
+services:
+  rocket-{{ service_name | default('jupyter') }}:
+    image: {{ image | default('jupyter/datascience-notebook:latest') }}
+    container_name: rocket-{{ service_name | default('jupyter') }}
+    ports:
+      - "{{ port | default(8888) }}:8888"
+    volumes:
+      - {{ notebook_dir | default('./notebooks') }}:/home/jovyan/work
+      - jupyter_data_{{ service_name | default('jupyter') }}:/home/jovyan/.jupyter
+    environment:
+      - JUPYTER_ENABLE_LAB={{ enable_lab | default('yes') }}
+      {% if token is defined %}
+      - JUPYTER_TOKEN={{ token }}
+      {% else %}
+      - JUPYTER_TOKEN=''
+      {% endif %}
+      {% for key, value in additional_env.items() %}
+      - {{ key }}={{ value }}
+      {% endfor %}
+    command: start-notebook.sh --NotebookApp.base_url={{ base_url | default('/') }}
+    restart: {{ restart_policy | default('always') }}
+    {% if gpu %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    {% endif %}
+    networks:
+      - rocket
+
+volumes:
+  jupyter_data_{{ service_name | default('jupyter') }}:
+
+networks:
+  rocket:
+    external: true
